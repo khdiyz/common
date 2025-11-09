@@ -36,16 +36,35 @@ func GetLogger() *Logger {
 
 		consoleEncoder := zapcore.NewConsoleEncoder(encoderConfig)
 
+		logLevel := getLogLevel()
+
 		core := zapcore.NewCore(
 			consoleEncoder,
 			zapcore.Lock(os.Stdout),
-			zapcore.DebugLevel,
+			logLevel,
 		)
 
 		baseLogger := zap.New(core, zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel))
 		instance = &Logger{baseLogger.Sugar()}
 	})
 	return instance
+}
+
+// getLogLevel returns log level based on environment variable
+func getLogLevel() zapcore.Level {
+	env := os.Getenv("LOG_LEVEL")
+	switch env {
+	case "debug":
+		return zapcore.DebugLevel
+	case "info":
+		return zapcore.InfoLevel
+	case "warn":
+		return zapcore.WarnLevel
+	case "error":
+		return zapcore.ErrorLevel
+	default:
+		return zapcore.InfoLevel // Default
+	}
 }
 
 // WithField creates a logger with an additional field
@@ -55,7 +74,12 @@ func (log *Logger) WithField(key string, value any) *Logger {
 
 // WithFields creates a logger with multiple additional fields
 func (log *Logger) WithFields(fields map[string]any) *Logger {
-	return &Logger{log.SugaredLogger.With(fields)}
+	// Map ni key-value juftliklar ketma-ketligiga aylantiramiz
+	args := make([]any, 0, len(fields)*2)
+	for k, v := range fields {
+		args = append(args, k, v)
+	}
+	return &Logger{log.SugaredLogger.With(args...)}
 }
 
 // Sync flushes any buffered log entries
